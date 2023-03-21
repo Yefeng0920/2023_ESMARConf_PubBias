@@ -19,16 +19,16 @@ There are no formal requirements for participating, but knowledge of R is desira
 - To provide participants with a hands-on tutorial (with R code), which can be directly adjusted to their own analyses
 
 # Instructions
-Some examples of publication bias in ecology and evolution, methodological paper for publication bias can be found here: https://github.com/Yefeng0920/Publication_bias_workshop_SORTEE2022/tree/main/pdf
+Some examples of publication bias in ecology and evolution, methodological paper for publication bias can be found here: https://github.com/Yefeng0920/2023_ESMARConf_PubBias/tree/main/pdf
 
-A quick hands-on tutorial (HTML version) for the workshop can be accessed from here: https://github.com/Yefeng0920/Publication_bias_workshop_SORTEE2022/blob/main/pub_bias_code.html
+A quick hands-on tutorial (HTML version) for the workshop can be accessed from here: https://github.com/Yefeng0920/2023_ESMARConf_PubBias/blob/main/pub_bias_code.html
 
-A Rmd version can be found here: https://github.com/Yefeng0920/Publication_bias_workshop_SORTEE2022/blob/main/pub_bias_code.Rmd
+A Rmd version can be found here: https://github.com/Yefeng0920/2023_ESMARConf_PubBias/blob/main/pub_bias_code.Rmd
 
 A more comprehensive how-to guide to test and adjust for publication bias materials can be accessed from here: https://github.com/itchyshin/publication_bias
 
 Please, be aware that on the upper right-hand corner of this html, you can click on “Code” and be able to: (1) Show All Code accompanying the text in the html file, and (2) Download Rmd, that is, be able to download the Rmarkdown file, which you can then open and adjust in, e.g. RStudio.
 
-The slides we present in the workwhop can be found here: XXX
+The slides we present in the workwhop can be found here: to be added
 
-You can join the discussion via Slack workspace: XXX
+You can join the discussion via Slack workspace: to be added
