@@ -1,5 +1,4 @@
-# Publication bias workshop at 2023 Evidence Synthesis and Meta-Analysis in R ([
-2023 ESMARConf](https://esmarconf.org/))
+# Publication bias workshop at 2023 Evidence Synthesis and Meta-Analysis in R ([2023 ESMARConf](https://esmarconf.org/))
 
 ## Workshop Topic
 Test, adjust for, and report publication bias
