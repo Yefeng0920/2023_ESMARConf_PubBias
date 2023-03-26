@@ -27,9 +27,9 @@ This interactive format Rmarkdown/html is used to provide participants with a ha
 
 If this tutorial have helped you, please cite the following paper to credit the original authors:
 
-> Nakagawa S, Lagisz M, Jennions M D, et al. Methods for testing publication bias in ecological and evolutionary meta‐analyses[J]. Methods in Ecology and Evolution, 2022, 13(1): 4-21.
+> Nakagawa S, Lagisz M, Jennions M D, et al. Methods for testing publication bias in ecological and evolutionary meta‐analyses. Methods in Ecology and Evolution, 2022, 13(1): 4-21.
 
-> Viechtbauer W. Conducting meta-analyses in R with the metafor package[J]. Journal of statistical software, 2010, 36(3): 1-48.
+> Viechtbauer W. Conducting meta-analyses in R with the metafor package. Journal of statistical software, 2010, 36(3): 1-48.
 
 # Contributors
 
@@ -56,15 +56,16 @@ The University of New South Wales, Sydney, Australia
 Email: yefeng.yang1@unsw.edu.au
 
 
-Note: We are generally busy with our own research projects, but we try our best to adress your questions about this tutorial if you have any.
+Note: We are generally busy with our own research projects, but we will try our best to address your questions about this tutorial if you have any.
 
 
 # Loading packages  
 
-Load the`R` packages used in this tutorial. The main `R` packages used in this tutorial are `metafor` (for model fitting; @viechtbauer2010conducting) and `orchaRd` (for results reporting; @nakagawa2021orchard). All other `R` packages are used for data manipulations, visualizations and rmarkdown knitting. 
+Load the `R` packages used in this tutorial. The main `R` packages used in this tutorial are `metafor` (for effect size calculation and model fitting; @viechtbauer2010conducting) and `orchaRd` (for results reporting; @nakagawa2021orchard). All other `R` packages are used for data manipulations, visualizations and rmarkdown knitting. 
 
 ```{r, cache = FALSE}
 # the following packages are used for knitting, participants do not need to install and load them
+# instal.packages('pacman') #install R package 'pacman' if not already installed
 pacman::p_load(knitr,
                DT,
                readxl,
@@ -77,32 +78,31 @@ pacman::p_load(knitr,
 ```
 
 
-Below we randomly choose one meta-analysis paper in @costello2022decline's dataset as an example to show how to properly test, adjust for and report publication bias.  
+Below we randomly choose one meta-analysis paper from @costello2022decline's dataset as an example to show how to properly test, adjust for and report publication bias.  
 
-> Montagano L, Leroux S J, Giroux M A, et al. The strength of ecological subsidies across ecosystems: a latitudinal gradient of direct and indirect impacts on food webs[J]. Ecology Letters, 2019, 22(2): 265-274.
+> Montagano L, Leroux S J, Giroux M A, et al. The strength of ecological subsidies across ecosystems: a latitudinal gradient of direct and indirect impacts on food webs. Ecology Letters, 2019, 22(2): 265-274.
 
 # Load and process data from the example paper  
 
 ```{r read data}
-# load package
-library(readr) # package for reading data 
-library(tidyverse) # package for data manipulation
+# load package for reading and manipulating data
+pacman::p_load(readr,tidyverse)
+
 # load data
 dat <- read_csv(file = "data/montagano.et.al.2019.ecol.letts.csv")
 
 # have a look at the data
 head(dat)
-
 ```
 
 
-Before conducting publication bias tests, a necessary step is to calculate effect sizes estimates and their sampling errors. Here, we used standardized mean difference (SMD) as an example:
+Before conducting publication bias tests, a necessary step is to calculate effect sizes estimates and their sampling variances. Here, we calculate the standardized mean difference (SMD) as effect size:
 
 ```{r caclulate effect size}
-# load package
-library(metafor) # a common package for performing meta-analysis
+# load package for performing meta-analysis
+library(metafor)
 
-# compute effect size and its sampling variance
+# compute effect sizes and their sampling variances
 dat <- escalc(measure = "SMD", 
               n1i = n_subsidy, n2i = n_nosubsidy,
               m1i = Subsidy_mean, m2i = Nosubsidy_mean, 
@@ -110,79 +110,83 @@ dat <- escalc(measure = "SMD",
               append=TRUE, replace=TRUE, 
               data = dat)
 
-# delete NAs
-dat <- dat[!is.na(dat$yi) & !is.na(dat$vi), ]
-
 # have a look at the data
 t <- dat %>% DT::datatable()
 t
 ```
 
-# Test publication bias (i.e., small-study effects and decline effects)    
+# Test for publication bias (i.e., small-study effects and decline effects)    
 
-Recall the mathematical formulas used to test publication bias:
+Recall the mathematical formulas used to test for publication bias:
 
 $$
 y_{i} = \beta_{0} + \beta_{1}se_{i} + \beta_{2}c(year_{j}) + \sum \beta_{k}x_{k} + \mu_{(b)j} + \mu_{(w)i} + m_{i}, \\ \mu_{(b)j} \sim N(0,\sigma_{(b)}^2)\\ \mu_{(w)i} \sim N(0,\sigma_{(w)}^2)\\ m_{i} \sim N(0,\nu_{i})
 $$
 
-As shown in the slides and the above, the extended Egger's regression model looks complex, but it is not difficult to construct it using existing software, for example, `rma.mv()` function in `metafor` package.
+As shown in the slides and the above equation, the extended Egger's regression model looks complex, but it is not difficult to construct using existing software, for example, the `rma.mv()` function in the R package `metafor` (@viechtbauer2010conducting).
 
 ```{r test pb}
-# add an unique identifier to each row (effect size) to account for multiple effect sizes nested within the same study
+# add an unique identifier to each row (i.e. to each effect size) to account for multiple effect sizes nested within the same study. When fitting multi-level meta-analyses, within-study/residual heterogeneity has to be modeled explicitly by including this unit-level variable as a random effect
 dat$obsID <- 1:nrow(dat)
 
-# center publication year and other continuous moderator variables to ease interpretation of the results
-## center year
-dat$Year.c <- dat$Year - mean(dat$Year) # this variable will be used as a predictor to estimate decline effects
+# center publication year and other continuous moderator variables to ease interpretation of the results. In this case, we have decided to mean-center Year, so that 0 then represents the mean of Year
+dat$Year.c <- dat$Year - mean(dat$Year) # this variable will be used as a predictor to test for decline effects
 
-## add other important moderators to account for heterogeneity to avoid false positive
-## center latitude
+## add other important moderators to account for heterogeneity to avoid false positive. We use Latitude and  Longitude because they were used as predictor variables in the original paper
+## mean-center latitude
 dat$Latitude.c <- dat$Latitude - mean(dat$Latitude)
-## center altitude
+## mean-center longitude
 dat$Longitude.c <- dat$Longitude - mean(dat$Longitude)
 
-# create a variable to contain sampling error estimates, which can be used as a predictor to identify small-study effects
-dat$sei <- sqrt(dat$vi)
+# create a moderator containing sampling standard errors (SE), which will then be used to test for small-study effects 
+dat$sei <- sqrt(dat$vi) # the square root of sampling variance corresponds to the sampling standard errors (SE) (more in Figure 1 from Nakagawa et al. 2022)
 
-# simultaneously detect small-study effect and decline effect
+# simultaneously detect small-study and decline effects
 pub_bias_test <- rma.mv(yi, vi, 
-                        random = list(~ 1 | ID, ~ 1 | obsID),
-                        mods = ~ sei + Year.c +  Latitude.c + Longitude.c,
+                        random = list(~ 1 | ID, ~ 1 | obsID), # ID accounts for among-study heterogeneity whereas obsID accounts for within-study/residual heterogeneity
+                        mods = ~ sei + 
+                          Year.c +  
+                          Latitude.c + 
+                          Longitude.c,
                         test = "t",
                         method = "REML",
-                        data = dat) # Latitude,  Longitude are predictor variables used in the original paper
+                        data = dat) 
 ```
 
-Let's have a look at the model results of the above fitted multi-moderator meta-regression with:
+Let's have a look at the model results of the above fitted multi-moderator multi-level meta-regression with:
 
 ```{r}
 summary(pub_bias_test)
 ```
 
-A more appropriate way is to replace the original sampling error estimate by the modified measure of sampling error. A typical version is based on effective sample size. 
+A more appropriate way is to replace the original sampling standard error estimate by a modified measure of sampling error. A typical version is based on effective sample size. 
 
 $$
 y_{i} = \beta_{0} + \beta_{1}\sqrt{\frac {1} {\tilde{n_i}}} + \beta_{2}c(year_{j}) + \sum \beta_{k}x_{k} + \mu_{(b)j} + \mu_{(w)i} + m_{i}, \\ \mu_{(b)j} \sim N(0,\sigma_{(b)}^2)\\ \mu_{(w)i} \sim N(0,\sigma_{(w)}^2)\\ m_{i} \sim N(0,\nu_{i})
 $$
-First, let's calculate effective sample size, and calculate modified measure of effect size uncertainty/precision based on effective sample size:
+First, let's calculate effective sample size, and calculate the modified measure of effect size uncertainty/precision based on effective sample size:
 
 ```{r tilde n - adjusted sampling var}
 # write a help function to calculate effective sample size based sampling variance - tilde n
 ess.var_cal <- function(dat){(dat$n_subsidy + dat$n_nosubsidy)/(dat$n_subsidy * dat$n_nosubsidy)} 
+
 # calculate modified measure of sampling variance
 dat$ess.var <- ess.var_cal(dat)
+
 # calculate modified measure of sampling error - square root of tilde n
 dat$ess.se <- sqrt(dat$ess.var)
 ```
 
-Detect publication bias using the modified measure of sampling error:
+Detect publication bias using the modified measure of sampling standard error:
  
 ```{r re-fit}
-# simultaneously detect small-study effect and decline effect
+# simultaneously detect small-study and decline effects
 pub_bias_test2 <- rma.mv(yi, vi, 
                         random = list(~ 1 | ID, ~ 1 | obsID),
-                        mods = ~ ess.se + Year.c +  Latitude.c + Longitude.c,
+                        mods = ~ ess.se + 
+                          Year.c +  
+                          Latitude.c + 
+                          Longitude.c,
                         test = "t",
                         method = "REML",
                         data = dat)
@@ -191,7 +195,7 @@ summary(pub_bias_test2)
 
 # Report publication bias
 
-We see that the model slope $\beta_{2}$ (`Year.c`) is not statistically significant, which indicates that there is no decline effect. Let's visually present the results of the decline effect test (which can be done by `bubble_plot()` in `orchaRd` package; @nakagawa2021orchard)
+We see that the model slope $\beta_{2}$ (`Year.c`) is not statistically significant, which indicates that there is no strong evidence for decline effects. Let's visually see the results of this test (which can be done using the function `bubble_plot()` from the R package `orchaRd`; @nakagawa2021orchard)
 
 ```{r decline effect test, fig.cap="Figure 1. Bubble plot showing the relationship between publication year and effect size magnitude. `orchaRd` package was used to make the figure (@nakagawa2021orchard)"}
 
@@ -209,7 +213,7 @@ We see that the model slope $\beta_{2}$ (`Year.c`) is not statistically signific
 source("custom_func.R")
 
 de <- bubble_plot(pub_bias_test, mod = "Year.c", 
-                  xlab = "Publication year (centered by mean year 2010)", ylab = "Effect size estimates",
+                  xlab = "Publication year (centered by mean year 2010)", ylab = "Effect size estimates (SMD)",
                   group = "ID", k = TRUE, g = TRUE,
                   data = dat, legend.pos = "none") +
                   ggplot2::ylim(0,40) + 
@@ -220,9 +224,9 @@ de <- bubble_plot(pub_bias_test, mod = "Year.c",
 de
 ```
 
-We can see a temporal trend in the changes of the effect size magnitude (**Figure 1**), albeit the statistical test showed no significance. The estimate of slope $\beta_{2}$ is `r round(pub_bias_test$beta["Year.c",],3)` (95% CI = `r round(pub_bias_test$ci.lb[3],3)` to `r round(pub_bias_test$ci.ub[3],3)`), indicating that the effect size magnitude will reduce by `r abs(round(pub_bias_test$beta["Year.c",],3)*10)` over 10 years. This is equivalent to a medium effect size!!! If we only focus on the dichotomous reports on the decline effect test (*p*-value < 0.05 meaning decline effects *vs.* *p*-value > 0.05 meaning no decline effects), we would neglect the real decline of the effect size magnitude.
+We can see that there is a negative temporal trend in effect size magnitude (**Figure 1**), but bear in mind that the statistical test showed no statistical significance. The estimate of the slope $\beta_{2}$ is `r round(pub_bias_test$beta["Year.c",],3)` (95% CI = `r round(pub_bias_test$ci.lb[3],3)` to `r round(pub_bias_test$ci.ub[3],3)`), indicating that effect size magnitude decreased by `r abs(round(pub_bias_test$beta["Year.c",],3)*10)` over 10 years. This is equivalent to a medium effect size!!! If we only focus on a dichotomous choice (*p*-value < 0.05 meaning decline effects *vs.* *p*-value > 0.05 meaning no decline effects), we could be neglecting important evidence for the existence of decline effects.
 
-The similar interpretation philosophy can be applied to the test of small-study effects. The model slope $\beta_{1}$ (`sei`) is statistically significant, which indicates that there is a small-study effect. 
+A similar interpretation philosophy can be applied to the test of small-study effects. The model slope $\beta_{1}$ (`sei`) is statistically significant, which indicates that there is evidence for small-study effects (i.e. for funnel plot asymmetry). 
 
 ```{r small-study effect, fig.cap="Figure 2. Bubble plot showing the relationship between sampling error (inverse precision) of effect size magnitude. `orchaRd` package was used to make the figure (@nakagawa2021orchard)"}
 sse <- bubble_plot(pub_bias_test, mod = "sei", 
@@ -236,9 +240,9 @@ sse <- bubble_plot(pub_bias_test, mod = "sei",
 sse
 ```
 
-The visual presentation of the model results also confirms that small studies (with low precision) are more likely to report large effects (**Figure 2**). The estimate of slope $\beta_{1}$ is very large - `r round(pub_bias_test$beta["sei",],3)` (95% CI = `r round(pub_bias_test$ci.lb[2],3)` to `r round(pub_bias_test$ci.ub[2],3)`), implying that we should interpret the results and conclusions of your meta-analysis with caution.  
+The visual representation of the model results also confirms that small studies (i.e. those with low precision) are more likely to report large effects (**Figure 2**). The estimate of the slope $\beta_{1}$ is very large - `r round(pub_bias_test$beta["sei",],3)` (95% CI = `r round(pub_bias_test$ci.lb[2],3)` to `r round(pub_bias_test$ci.ub[2],3)`), implying that we should interpret the results and conclusions of this meta-analysis with caution.  
 
-We can also use a typical funnel plot (Figure 3) to visually check the asymmetry.
+We can further explore asymmetry using a traditional funnel plot (Figure 3).
 
 ```{r funnel plot, fig.cap="Figure 3. Visual inspection of the funnel plot to identify the small-study effect. `metafor` package was used to make the figure (@viechtbauer2010conducting)"}
 # make a funnel plot
@@ -260,21 +264,13 @@ $$
 # fit the above formula
 pub_bias_adjust <- rma.mv(yi, vi, 
                           random = list(~ 1 | ID, ~ 1 | obsID),
-                          mods = ~ vi + Year.c + Latitude.c + Longitude.c, # do not remove intercept via "-1", because intercept is our focal model estimate
+                          mods = ~ vi + 
+                            Year.c + 
+                            Latitude.c + 
+                            Longitude.c, # do not remove intercept via "-1", because the intercept is our focal model estimate
                           test = "t",
                           method = "REML",
                           data = dat)
-
-
-
-rma.mv(yi, vi, 
-                        random = list(~ 1 | ID, ~ 1 | obsID),
-                       # mods = ~ vi + Year.c +  Latitude.c + Longitude.c + System + Taxon + Taxon,
-                        test = "t",
-                        method = "REML",
-                        data = dat)
-
-
 ```
 
 Let's have a look at the model results of the above fitted multilevel multi-moderator meta-regression with:
@@ -283,7 +279,7 @@ Let's have a look at the model results of the above fitted multilevel multi-mode
 summary(pub_bias_adjust)
 ```
 
-We can see that the adjusted effect size is statistically significant ($\beta_{0}$ = `r round(pub_bias_adjust$beta[1],3)` (95% CI = `r round(pub_bias_adjust$ci.lb[1],3)` to `r round(pub_bias_adjust$ci.ub[1],3)`), p-value < 0.0001). By comparing the original effect size and the adjusted effect size (see below table), we know that although this meta-analysis has publication bias, the result is robust.
+We can see that the adjusted effect size is statistically significant ($\beta_{0}$ = `r round(pub_bias_adjust$beta[1],3)` (95% CI = `r round(pub_bias_adjust$ci.lb[1],3)` to `r round(pub_bias_adjust$ci.ub[1],3)`), p-value < 0.0001). By comparing the original effect size and the adjusted effect size (see table below), we know that although there is evidence of publication bias in this meta-analysis, the results seem robust.
 
 ```{r robustness}
 # fit a intercept-only model to estimate the overall effect/pooled effect size
@@ -303,7 +299,7 @@ t1 <- data.frame("Overall effect (pooled mean)" = c(round(overall_effect_mod$b[1
 colnames(t1) <- c("Overall effect (pooled mean)", "Standard error", "p-value", "Lower CI", "Upper CI")
 
 t1_2 <- t(t1) %>% as.data.frame()
-colnames(t1_2) <- c("Original estimate", "Bias-corrected version")
+colnames(t1_2) <- c("Original estimate", "Bias-corrected estimate")
 
 t1_2 %>% DT::datatable()
 ```
@@ -311,6 +307,6 @@ t1_2 %>% DT::datatable()
 
 # Conduct your own analyses and further materials to learn
 
-Participants can modify the above code to test and adjust for publication bias (small-study effects and decline effects) and (visually) report the associated results. If you prefer an `rmd` version of the code, please refer to our [Github repository: Yefeng0920/2023_ESMARConf_PubBias](https://github.com/Yefeng0920/2023_ESMARConf_PubBias). If you are after a comprehensive theoretical knowledge on the publication bias test in ecology and evolution, we recommend you to thoroughly read our recent methodological paper published in *Methods in Ecology and Evolution* (@nakagawa2022methods). In this paper, we summarized the current practice of publication bias tests in ecology and evolution, and proposed the multilevel multi-moderator meta-regression method approach.   
+Participants can modify the above code to test and adjust for publication bias (small-study and decline effects) and (visually) report the associated results. If you prefer an `rmd` version of the code, please refer to our [Github repository: Yefeng0920/2023_ESMARConf_PubBias](https://github.com/Yefeng0920/2023_ESMARConf_PubBias). If you are after a comprehensive theoretical knowledge on the publication bias test in ecology and evolution, we recommend you to thoroughly read our recent methodological paper published in *Methods in Ecology and Evolution* (@nakagawa2022methods). In that paper, we summarized the current practice of publication bias tests in ecology and evolution, and proposed the multilevel multi-moderator meta-regression method approach.   
 
 # References
