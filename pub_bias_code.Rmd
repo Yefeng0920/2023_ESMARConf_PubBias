@@ -228,7 +228,7 @@ We can see that there is a negative temporal trend in effect size magnitude (**F
 
 A similar interpretation philosophy can be applied to the test of small-study effects. The model slope $\beta_{1}$ (`sei`) is statistically significant, which indicates that there is evidence for small-study effects (i.e. for funnel plot asymmetry). 
 
-```{r small-study effect, fig.cap="Figure 2. Bubble plot showing the relationship between sampling error (inverse precision) of effect size magnitude. `orchaRd` package was used to make the figure (@nakagawa2021orchard)"}
+```{r small-study effect, fig.cap="Figure 2. Bubble plot showing the relationship between effect size magnitude and its sampling error (inverse precision). `orchaRd` package was used to make the figure (@nakagawa2021orchard)"}
 sse <- bubble_plot(pub_bias_test, mod = "sei", 
                    xlab = "Sampling error estimates", ylab = "Effect size estimates",
                    group = "ID", k = TRUE, g = TRUE,
